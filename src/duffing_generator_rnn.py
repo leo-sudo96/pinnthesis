@@ -6,20 +6,29 @@ import torch
 import numpy as np
 from scipy.integrate import odeint
 import random
+import os
+import resource
+import sys
+def print_memory_usage():
+    rusage_denom = 1024.
+    if sys.platform == 'darwin':
+        rusage_denom = rusage_denom * rusage_denom
+    mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / rusage_denom
+    print(f"Memory usage: {mem} MB")
 
 class DuffingGeneratorClass:
     def duffing_generator(self):
         batches = []
-        for _ in range(64):  # Generate 64 batches
+        for _ in range(8):  # Generate 1000 batches
             # Randomly generate parameters
-            a = random.uniform(-1.5, 1.5)
-            b = random.uniform(-1.5, 1.5)
-            d = random.uniform(-10, 10)
-            gamma = random.uniform(-1.5, 1.5)
-            w = random.uniform(0, 10)
+            a = random.uniform(-1, 1)
+            b = random.uniform(-1, 1)
+            d = random.uniform(-2, 5)
+            gamma = random.uniform(-5, 5)
+            w = random.uniform(0, 5)
 
             # Time points
-            x = torch.linspace(0, 1, 500).view(-1, 1)
+            x = torch.linspace(0, 1, 1000).view(-1, 1)
 
             # Duffing differential equation
             def duffing(y, t):
@@ -30,13 +39,14 @@ class DuffingGeneratorClass:
             # Initial conditions and solving the ODE
             y0 = [0, 0]
             sol = odeint(duffing, y0, x.view(-1).numpy())
+            #print('solving duffing')
+            #print_memory_usage()
             y = torch.tensor(sol[:, 0], dtype=torch.float32)
 
             # Create a batch as a tuple
-            batch = (y, torch.tensor(d), torch.tensor(a), torch.tensor(b), torch.tensor(gamma), torch.tensor(w), x)
-            
+            batch = (y, d, a, b, gamma, w, x)
+
             # Append the batch to the list of batches
             batches.append(batch)
-
 
         return batches
