@@ -9,26 +9,25 @@ import random
 import os
 import resource
 import sys
-def print_memory_usage():
-    rusage_denom = 1024.
-    if sys.platform == 'darwin':
-        rusage_denom = rusage_denom * rusage_denom
-    mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / rusage_denom
-    print(f"Memory usage: {mem} MB")
 
+
+import torch
+import random
+import numpy as np
+from scipy.integrate import odeint
 class DuffingGeneratorClass:
     def duffing_generator(self):
         batches = []
-        for _ in range(8):  # Generate 1000 batches
+        for _ in range(8):  # Generate 8 batches
             # Randomly generate parameters
             a = random.uniform(-1, 1)
             b = random.uniform(-1, 1)
             d = random.uniform(-2, 5)
-            gamma = random.uniform(-5, 5)
+            gamma = random.uniform(0, 5)
             w = random.uniform(0, 5)
 
             # Time points
-            x = torch.linspace(0, 1, 1000).view(-1, 1)
+            x = torch.linspace(0, 1, 100).view(-1, 1)
 
             # Duffing differential equation
             def duffing(y, t):
@@ -39,8 +38,6 @@ class DuffingGeneratorClass:
             # Initial conditions and solving the ODE
             y0 = [0, 0]
             sol = odeint(duffing, y0, x.view(-1).numpy())
-            #print('solving duffing')
-            #print_memory_usage()
             y = torch.tensor(sol[:, 0], dtype=torch.float32)
 
             # Create a batch as a tuple
