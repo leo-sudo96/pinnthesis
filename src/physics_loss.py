@@ -16,51 +16,52 @@ def print_memory_usage():
     print(f"Memory usage: {mem} MB")
     
 
-import torch.autograd as autograd
+
 
 class physics_loss_class:
-
-    def physics_loss(self, model, x_time, x_params,device):
-        # Extract the parameters from x_combined
-        d = x_params[:, 0]
-        a = x_params[:, 1]
-        b = x_params[:, 2]
-        gamma = x_params[:, 3]
-        w = x_params[:, 4]
-        x_physics = torch.linspace(0,1,30).view(-1,1).requires_grad_(True).to(device)# sample locations over the problem domain
+    def physics_loss(self, model, current_params,x):
+        #combined_input.requires_grad_(True)
         
-        # Repeat the parameters to match the size of x_physics
-        params_repeated = x_params[0, :].repeat(30, 1)
+        # Ensure the first dimension (time) is used for differentiation
+        #time = combined_input[:, 0].unsqueeze(1)
+        #time.requires_grad_(True)
+        x = x.view(-1,1).requires_grad_(True)
+        # Predict model output using combined input
+        yhp = model(current_params,x)
         
-        # Combine x_physics with the repeated parameters
-        x_physics_combined = torch.cat([x_physics, params_repeated], dim=1)
-        x_time = x_physics_combined[:, 0:1]  # Extract the time component
-        x_params = x_physics_combined[:, 1:]  # Extract the rest of the parameters
-        # Model prediction for physics-based loss
-        yhp = model(x_time, x_params)
-        def model_output(x_time, x_params):
-            return model(x_time, x_params)
+        # Compute the first derivative with respect to time
+        dy_pred = torch.autograd.grad(outputs=yhp, inputs=x,
+                                      grad_outputs=torch.ones_like(yhp),
+                                      create_graph=True, allow_unused=True)[0]
+
+        # Check if dy_pred is None and handle it
+        if dy_pred is None:
+            raise ValueError("First derivative (dy_pred) could not be computed. Check model dependencies on time.")
+
+        # Compute the second derivative
+        d2y_pred = torch.autograd.grad(outputs=dy_pred, inputs=x,
+                                       grad_outputs=torch.ones_like(dy_pred),
+                                       create_graph=True, allow_unused=True)[0]
+
+        # Check if d2y_pred is None and handle it
+        if d2y_pred is None:
+            raise ValueError("Second derivative (d2y_pred) could not be computed. Check model dependencies on time.")
+
         
-        def central_difference_second_order(f, x, h=1e-5):
-            return (f(x + h) - 2 * f(x) + f(x - h)) / (h ** 2)
-        # Compute the first derivative using autograd
-        dy_pred = torch.autograd.grad(outputs=yhp, inputs=x_physics, grad_outputs=torch.ones_like(yhp), create_graph=True)[0]
+        # Compute physics-based loss using dydt, d2ydt2, and any necessary physical equations
 
-        # Compute the first derivative using autograd
-        d2y_pred = torch.autograd.grad(outputs=yhp, inputs=x_physics, grad_outputs=torch.ones_like(yhp), create_graph=True)[0]
-        
-        # Define a wrapper for the model output
-        def model_output(x):
-            return model(x, x_params)
+        # Since parameters are repeated for each time step, every row in the first 5 columns contains the parameters
+        # for the corresponding time step, no need to reshape or repeat them again
+        d, a, b, gamma, w = current_params[:, 0], current_params[:, 1], current_params[:, 2], current_params[:, 3], current_params[:, 4]
 
-        # Compute the second derivative using the custom method
-        d2y_dx2 = central_difference_second_order(model_output, x_physics, h=1e-5)
-
-        # Calculate physics-based loss
-        physics = d2y_pred + d * dy_pred + a * yhp + b * torch.pow(yhp, 3) - gamma * torch.cos(w * x_physics)
-        loss_physics = (1e-3) * torch.mean(physics**2)
+        # Calculate the physics-based component of the loss
+        # Ensure d2y_pred and other derivatives are not None before proceeding
+        if d2y_pred is not None:
+            physics_loss = d2y_pred + d * dy_pred + a * yhp + b * yhp.pow(3) - gamma * torch.cos(w * x)
+            loss_physics = (1e-3) * torch.mean(physics_loss.pow(2))
+        else:
+            raise RuntimeError("Failed to compute the second derivative. Check the combined_input and model structure.")
 
         return loss_physics
-
   
     
