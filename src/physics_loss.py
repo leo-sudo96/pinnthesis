@@ -19,15 +19,15 @@ def print_memory_usage():
 
 
 class physics_loss_class:
-    def physics_loss(self, model, current_params,x):
+    def physics_loss(self, model, params_physics,x_physics):
         #combined_input.requires_grad_(True)
-        
+        current_params = params_physics
         # Ensure the first dimension (time) is used for differentiation
         #time = combined_input[:, 0].unsqueeze(1)
         #time.requires_grad_(True)
-        x = x.view(-1,1).requires_grad_(True)
+        x = x_physics.view(-1,1).requires_grad_(True)
         # Predict model output using combined input
-        yhp = model(current_params,x)
+        yhp = model(x,params_physics)
         
         # Compute the first derivative with respect to time
         dy_pred = torch.autograd.grad(outputs=yhp, inputs=x,
@@ -58,7 +58,7 @@ class physics_loss_class:
         # Ensure d2y_pred and other derivatives are not None before proceeding
         if d2y_pred is not None:
             physics_loss = d2y_pred + d * dy_pred + a * yhp + b * yhp.pow(3) - gamma * torch.cos(w * x)
-            loss_physics = (1e-3) * torch.mean(physics_loss.pow(2))
+            loss_physics = (1e-4) * torch.mean(physics_loss.pow(2))
         else:
             raise RuntimeError("Failed to compute the second derivative. Check the combined_input and model structure.")
 

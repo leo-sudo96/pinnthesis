@@ -19,7 +19,7 @@ class DuffingGeneratorClass:
             # Randomly generate parameters
             a = random.uniform(-1, 1)
             b = random.uniform(-1, 1)
-            d = random.uniform(0, 5)
+            d = random.uniform(0, 2)
             gamma = random.uniform(0, 10)
             w = random.uniform(0, 10)
 
@@ -31,7 +31,7 @@ class DuffingGeneratorClass:
 
             # Initial conditions and solving the ODE
             y0 = [0, 0]
-            sol = odeint(duffing, y0, x.squeeze().numpy())  # Ensure x is compatible with odeint
+            sol = odeint(duffing, y0, x.cpu().squeeze().numpy())  # Ensure x is compatible with odeint
             y = torch.tensor(sol[:, 0], dtype=torch.float32).view(-1, 1)  # y_physics for one batch
 
             y_physics_list.append(y)
