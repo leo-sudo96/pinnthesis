@@ -97,37 +97,38 @@ class FCN(nn.Module):
 
 
 
-class CustomFCN(nn.Module):
-    def __init__(self, num_parameters, n_hidden, n_layers):
-        super(CustomFCN, self).__init__()
-        self.num_input_features = 1 + num_parameters  # Time + parameters
+class AdaptedFCN(nn.Module):
+    def __init__(self, n_time_features, n_param_features, n_hidden, n_layers):
+        super(AdaptedFCN, self).__init__()
         
-        # Separate handling for time and parameters
-        # Time pathway
-        self.time_layer = nn.Linear(1, n_hidden)  # Dedicated layer for time
-        # Parameters pathway
-        self.params_layer = nn.Linear(num_parameters, n_hidden)  # Dedicated layer for parameters
+        # Number of input features is the sum of time features and parameter features
+        self.input_features = n_time_features + n_param_features
         
-        # Shared layers
-        self.shared_layers = nn.ModuleList([nn.Linear(n_hidden * 2, n_hidden)])  # Combines time and parameters influence
-        self.shared_layers += [nn.Linear(n_hidden, n_hidden) for _ in range(n_layers - 2)]
-        self.shared_layers.append(nn.Linear(n_hidden, 1))  # Output layer predicts the oscillation
+        # Input layer takes combined time and parameters
+        self.input_layer = nn.Linear(self.input_features, n_hidden)
+        
+        # Hidden layers
+        self.hidden_layers = nn.ModuleList()
+        for _ in range(n_layers - 1):
+            self.hidden_layers.append(nn.Linear(n_hidden, n_hidden))
+        
+        # Output layer
+        self.output_layer = nn.Linear(n_hidden, 1)
+        
+        # Activation function
+        self.activation = nn.Tanh()  # Using Tanh as an example; adjust as needed
 
-    def forward(self, x):
-        # Split input into time and parameters
-        time_input = x[:, 0:1]  # Assuming the first column is time
-        params_input = x[:, 1:]  # The rest are parameters
+    def forward(self, x, params):
+        # Concatenate time and parameter features
+        x_combined = torch.cat((x, params), dim=1)
         
-        # Process time and parameters separately
-        time_output = F.tanh(self.time_layer(time_input))
-        params_output = F.tanh(self.params_layer(params_input))
+        # Input layer with activation
+        x = self.activation(self.input_layer(x_combined))
         
-        # Combine the outputs from time and parameters pathways
-        combined_input = torch.cat((time_output, params_output), dim=1)
+        # Hidden layers with activation
+        for layer in self.hidden_layers:
+            x = self.activation(layer(x))
         
-        # Process combined input through shared layers
-        for layer in self.shared_layers[:-1]:
-            combined_input = F.tanh(layer(combined_input))
-        output = self.shared_layers[-1](combined_input)  # Linear output for the last layer
-        
-        return output
+        # Output layer without activation (assuming a regression task)
+        x = self.output_layer(x)
+        return x

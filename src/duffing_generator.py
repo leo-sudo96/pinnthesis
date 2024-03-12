@@ -17,11 +17,11 @@ class DuffingGeneratorClass:
 
         for _ in range(num_batches):
             # Randomly generate parameters
-            a = random.uniform(-1, 1)
-            b = random.uniform(-1, 1)
-            d = random.uniform(0, 2)
-            gamma = random.uniform(0, 10)
-            w = random.uniform(0, 10)
+            a = random.uniform(-2, 2)
+            b = random.uniform(0, 3)
+            d = random.uniform(0, 0.5)
+            gamma = random.uniform(0, 1.5)
+            w = random.uniform(0, 2.5)
 
             # Duffing differential equation solver setup
             def duffing(y, t):
