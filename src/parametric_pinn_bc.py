@@ -103,7 +103,7 @@ def generate_data_with_boundaries(num_samples, x):
     # Ensure x is a numpy array for compatibility with odeint
     x_np = x.numpy() if isinstance(x, torch.Tensor) else x
 
-    for _ in range(num_samples):
+    for _ in tqdm.tqdm(range(num_samples)):
         # Randomly choose parameters for each sample
         a = random.uniform(-2, 2)
         b = random.uniform(0, 3)
@@ -210,7 +210,7 @@ N_LAYERS = 4
 epochs = 100000
 model = FCN(N_INPUT, N_OUTPUT, N_HIDDEN, N_LAYERS)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0003)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 model = model.to(device)
 tensor_list = [X_tensor, Y_tensor, x_boundary, f_boundary]  # Your tensors
 tensor_list = [t.to(device) for t in tensor_list]
@@ -219,22 +219,22 @@ tensor_list = [t.to(device) for t in tensor_list]
 # In[11]:
 
 
-#initial_lr = 0.001
-#num_warmup_steps = 1000
-#num_total_steps = 6000
-#decay_rate = 0.1
-#decay_steps = 100
+initial_lr = 0.01
+num_warmup_steps = 10
+num_total_steps = 100000
+decay_rate = 0.1
+decay_steps = 100
 
-#def lr_lambda(current_step: int):
-#    if current_step < num_warmup_steps:
+def lr_lambda(current_step: int):
+    if current_step < num_warmup_steps:
         # Linear warmup
-#        return float(current_step) / float(max(1, num_warmup_steps))
-#    else:
+        return float(current_step) / float(max(1, num_warmup_steps))
+    else:
         # Exponential decay
-#        return decay_rate ** ((current_step - num_warmup_steps) // decay_steps)
+        return decay_rate ** ((current_step - num_warmup_steps) // decay_steps)
 
-# Define the scheduler
-#scheduler = LambdaLR(optimizer, lr_lambda)
+#Define the scheduler
+scheduler = LambdaLR(optimizer, lr_lambda)
 
 
 # In[12]:
@@ -313,12 +313,12 @@ for epoch in tqdm.tqdm(range(epochs)):
         print(f'Epoch {epoch}, Total Loss: {total_loss.item()}')
 
     if  epoch % 10 == 0:
-        model_save_path = os.path.join(current_directory, "/models/fcn_pinn_1sec_higher_varparam_model.pth")
+        model_save_path = os.path.join(current_directory, "/models/fcn_pinn_10sec_higher_schedulerparam_model.pth")
         torch.save(model.state_dict(), model_save_path)
         print(f"Model saved to {model_save_path}")
             
     if total_loss < 1e-7:
-        model_save_path = os.path.join(current_directory, "/models/fcn_pinn_1sec_higher_varparam_model.pth")
+        model_save_path = os.path.join(current_directory, "/models/fcn_pinn_10sec_higher_schedulerparam_model.pth")
         torch.save(model.state_dict(), model_save_path)
         print(f"Model saved to {model_save_path}")
                 
