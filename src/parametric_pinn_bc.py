@@ -137,7 +137,7 @@ def generate_data_with_boundaries(num_samples, x):
 
 
 #data, boundary_values = generate_data_with_boundaries(num_samples=10000, x=np.linspace(0, 10, 500))
-data= generate_data_with_boundaries(num_samples=1000000, x=np.linspace(0, 10, 5000))
+data= generate_data_with_boundaries(num_samples=60000, x=np.linspace(0, 1, 500))
 # Convert the generated data to PyTorch tensors
 X = torch.tensor(data[:, :-1], dtype=torch.float32)  # Input features: [x_i, a, b, d, gamma, omega]
 Y = torch.tensor(data[:, -1], dtype=torch.float32).view(-1, 1)  # Targets: x(t)
@@ -167,7 +167,7 @@ oscillation_dataset = OscillationDataset(X_tensor, Y_tensor)
 oscillation_dataset = OscillationDataset(X_tensor, Y_tensor)#, boundary_conditions_tensor
 
 
-oscillation_dataloader = DataLoader(oscillation_dataset, batch_size=2048, shuffle=True, num_workers=4)#, collate_fn=custom_collate
+oscillation_dataloader = DataLoader(oscillation_dataset, batch_size=4096, shuffle=True, num_workers=4)#, collate_fn=custom_collate
 
 
 # In[9]:
@@ -206,11 +206,11 @@ class FCN(nn.Module):
 N_INPUT = 6 # [x_i, a, b, d, gamma, omega]
 N_HIDDEN = 128
 N_OUTPUT = 1  # x(t)
-N_LAYERS = 4
-epochs = 100000
+N_LAYERS = 6
+epochs = 6000
 model = FCN(N_INPUT, N_OUTPUT, N_HIDDEN, N_LAYERS)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 model = model.to(device)
 tensor_list = [X_tensor, Y_tensor, x_boundary, f_boundary]  # Your tensors
 tensor_list = [t.to(device) for t in tensor_list]
@@ -219,9 +219,9 @@ tensor_list = [t.to(device) for t in tensor_list]
 # In[11]:
 
 
-initial_lr = 0.01
-num_warmup_steps = 10
-num_total_steps = 100000
+initial_lr = 0.001
+num_warmup_steps = 1000
+num_total_steps = 6000
 decay_rate = 0.1
 decay_steps = 100
 
@@ -233,7 +233,7 @@ def lr_lambda(current_step: int):
         # Exponential decay
         return decay_rate ** ((current_step - num_warmup_steps) // decay_steps)
 
-#Define the scheduler
+# Define the scheduler
 scheduler = LambdaLR(optimizer, lr_lambda)
 
 
@@ -308,7 +308,7 @@ for epoch in tqdm.tqdm(range(epochs)):
     
         total_loss.backward()
         optimizer.step()
-    #scheduler.step()
+    scheduler.step()
     if epoch % 1 == 0:
         print(f'Epoch {epoch}, Total Loss: {total_loss.item()}')
 
@@ -322,20 +322,6 @@ for epoch in tqdm.tqdm(range(epochs)):
         torch.save(model.state_dict(), model_save_path)
         print(f"Model saved to {model_save_path}")
                 
-
-
-# In[ ]:
-
-
-# Plotting results
-        plot_result(x=X_tensor[:, 0],  # Domain (time points)
-                    y_tensor_squeezed=Y_tensor,  # Ground truth data
-                    x_data=X_tensor[:, 0],  # Same as domain for plotting
-                    y_data=Y_tensor,  # Ground truth data for scatter plot
-                    yh= yh,  # Model predictions
-                    xp=None,  # Additional physics-based prediction points, if applicable
-                    physics_params=None,  # Physics parameters, if needed for additional predictions
-                    model= yhp)  # Model, if additional physics-based predictions are to be plotted    
 
 
 # In[ ]:
